@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/home/yalasia1102/exchangeBooth/program/target/rls/debug/build/typenum-e8543d94b7c83e47/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/home/yalasia1102/exchangeBooth/program/target/rls/debug/build/typenum-e8543d94b7c83e47/out/op.rs
