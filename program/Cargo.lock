@@ -3,6 +3,17 @@
 version = 3
 
 [[package]]
+name = "ExchangeBooth"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "borsh",
+ "solana-program",
+ "spl-token",
+ "thiserror",
+]
+
+[[package]]
 name = "ahash"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -344,17 +355,6 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
-]
-
-[[package]]
-name = "exchangeBooth"
-version = "0.1.0"
-dependencies = [
- "arrayref",
- "borsh",
- "solana-program",
- "spl-token",
- "thiserror",
 ]
 
 [[package]]
