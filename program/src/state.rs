@@ -11,4 +11,3 @@ pub struct ExchangeBooth {
     pub OraclePubkey: [u8; 32],
     pub FeeRate: [u8; 2], //rateNum + decimal For Example [1, 3] means 0.1%
 }
-

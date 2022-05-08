@@ -17,7 +17,11 @@ use spl_token::{
 };
 
 use crate::{
-    error::ExchangeBoothError, instruction::ExchangeBoothInstruction, state::ExchangeBooth,
+    error::{
+        check_assert, declare_check_assert_macros, ExchangeBoothError, ExchangeBoothErrorCode,
+        ExchangeBoothResult, SourceFileId,
+    },
+    instruction::ExchangeBoothInstruction, state::ExchangeBooth,
 };
 
 pub struct Processor;
@@ -27,9 +31,9 @@ impl Processor {
         let instruction = ExchangeBoothInstruction::try_from_slice(&data)
             .map_err(|_| ProgramError::InvalidInstructionData)?;
         match instruction {
-            ExchangeBoothInstruction::InitializeExchangeBooth {} => {
+            ExchangeBoothInstruction::InitializeExchangeBooth { buffer_seed,fee_rate } => {
                 msg!("Instruction: Initialize ExchangeBooth");
-                Self::process_initialize_exchangebooth(program_id, accounts)
+                Self::process_initialize_exchangebooth(program_id, accounts, buffer_seed, fee_rate)
             }
             ExchangeBoothInstruction::Deposit { token_name, amount } => {
                 msg!("Instruction: Initialize ExchangeBooth");
@@ -52,9 +56,31 @@ impl Processor {
         }
     }
     fn process_initialize_exchangebooth(
-        _program_id: &Pubkey,
+        program_id: &Pubkey,
         accounts: &[AccountInfo],
+        buffer_seed: u64,
+        fee_rate: [u8; 2]
     ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let admin = next_account_info(account_info_iter)?;
+        let x_vault_account = next_account_info(account_info_iter)?;
+        let y_vault_account = next_account_info(account_info_iter)?;
+        let x_mint_account = next_account_info(account_info_iter)?;
+        let y_mint_account = next_account_info(account_info_iter)?;
+        let exchange_booth = next_account_info(account_info_iter)?;
+        let oracle = next_account_info(account_info_iter)?;
+        let system_program_account = next_account_info(account_info_iter)?;
+        let system_token_program_account = next_account_info(account_info_iter)?;        
+        let (exchange_booth_key, bump_seed) = Pubkey::find_program_address(
+            &[
+                b"ExchangeBoothForTokenXAndTokenY",
+                admin.key.as_ref(),
+                &fee_rate[..],
+                &buffer_seed.to_le_bytes(),
+            ],
+            program_id,
+        ); 
+        
         Ok(())
     }
 
