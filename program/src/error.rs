@@ -42,6 +42,9 @@ pub enum ExchangeBoothErrorCode
     #[error("Invalid Instruction")]
     InvalidInstruction,
 
+    #[error("Account Dismatch")]
+    PDAAccountDismatch,
+
     #[error("Not Rent Exempt")]
     NotRentExempt,
 

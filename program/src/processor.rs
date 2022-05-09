@@ -12,8 +12,7 @@ use solana_program::{
 };
 use spl_token::{
     instruction::{approve, burn, close_account, initialize_mint, mint_to, transfer},
-    state::Account,
-    state::Mint,
+    state::{Account,Mint},
 };
 
 use crate::{
@@ -21,8 +20,11 @@ use crate::{
         check_assert, declare_check_assert_macros, ExchangeBoothError, ExchangeBoothErrorCode,
         ExchangeBoothResult, SourceFileId,
     },
-    instruction::ExchangeBoothInstruction, state::ExchangeBooth,
+    instruction::ExchangeBoothInstruction,
+    state::ExchangeBooth,
+    utils::{check_token_account},
 };
+declare_check_assert_macros!(SourceFileId::Processor);
 
 pub struct Processor;
 
@@ -31,9 +33,12 @@ impl Processor {
         let instruction = ExchangeBoothInstruction::try_from_slice(&data)
             .map_err(|_| ProgramError::InvalidInstructionData)?;
         match instruction {
-            ExchangeBoothInstruction::InitializeExchangeBooth { buffer_seed,fee_rate } => {
+            ExchangeBoothInstruction::InitializeExchangeBooth {
+                // buffer_seed,
+                fee_rate,
+            } => {
                 msg!("Instruction: Initialize ExchangeBooth");
-                Self::process_initialize_exchangebooth(program_id, accounts, buffer_seed, fee_rate)
+                Self::process_initialize_exchangebooth(program_id, accounts, /* buffer_seed, */ fee_rate)
             }
             ExchangeBoothInstruction::Deposit { token_name, amount } => {
                 msg!("Instruction: Initialize ExchangeBooth");
@@ -43,7 +48,10 @@ impl Processor {
                 msg!("Instruction: Initialize ExchangeBooth");
                 Self::process_withdraw(program_id, accounts, token_name, amount)
             }
-            ExchangeBoothInstruction::Exchange { token_name_from, amount } => {
+            ExchangeBoothInstruction::Exchange {
+                token_name_from,
+                amount,
+            } => {
                 msg!("Instruction: Initialize ExchangeBooth");
                 Self::process_exchange(program_id, accounts, token_name_from, amount)
             }
@@ -58,8 +66,8 @@ impl Processor {
     fn process_initialize_exchangebooth(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        buffer_seed: u64,
-        fee_rate: [u8; 2]
+        // buffer_seed: u64,
+        fee_rate: [u8; 2],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let admin = next_account_info(account_info_iter)?;
@@ -70,17 +78,169 @@ impl Processor {
         let exchange_booth = next_account_info(account_info_iter)?;
         let oracle = next_account_info(account_info_iter)?;
         let system_program_account = next_account_info(account_info_iter)?;
-        let system_token_program_account = next_account_info(account_info_iter)?;        
-        let (exchange_booth_key, bump_seed) = Pubkey::find_program_address(
+        let system_token_program_account = next_account_info(account_info_iter)?;
+
+        // order: 
+        // 1 get exchange_booth info, 
+        // 2 get vaults info from exchange_booth,
+        // 3 create exchange_booth
+        // 4 create vaults with owner as token program
+        // 5 initiate exchange_booth
+        let (exchange_booth_key, bump_seed_exchange_booth) = Pubkey::find_program_address(
             &[
                 b"ExchangeBoothForTokenXAndTokenY",
                 admin.key.as_ref(),
                 &fee_rate[..],
-                &buffer_seed.to_le_bytes(),
+                // &buffer_seed.to_le_bytes(),
             ],
             program_id,
-        ); 
-        
+        );
+
+        let (token_x_vault_key, bump_seed_token_x_vault) = Pubkey::find_program_address(
+            &[
+                b"TokenXVault",
+                admin.key.as_ref(),
+            ],
+            &exchange_booth_key,
+        );
+        let (token_y_vault_key, bump_seed_token_y_vault) = Pubkey::find_program_address(
+            &[
+                b"TokenYVault",
+                admin.key.as_ref(),
+            ],
+            &exchange_booth_key,
+        );
+
+        check_eq! (exchange_booth.key, &exchange_booth_key, ExchangeBoothErrorCode::PDAAccountDismatch);
+        check_eq! (x_vault_account.key, &token_x_vault_key, ExchangeBoothErrorCode::PDAAccountDismatch);
+        check_eq! (y_vault_account.key, &token_y_vault_key, ExchangeBoothErrorCode::PDAAccountDismatch);
+
+        let rent = Rent::default();
+        let create_exchange_booth_account_ix = system_instruction::create_account(
+            admin.key,
+            &exchange_booth_key,
+            rent.minimum_balance(130 as usize), // 4 pubkey and 1 [u8; 2]
+            130 as u64,
+            program_id,
+        );
+
+        msg!("Creating Exchange Booth Account...");
+        invoke_signed(
+            &create_exchange_booth_account_ix,
+            &[
+                system_program_account.clone(),
+                admin.clone(),
+                exchange_booth.clone(),
+            ],
+            &[&[
+                b"ExchangeBoothForTokenXAndTokenY",
+                admin.key.as_ref(),
+                &fee_rate,
+                &[bump_seed_exchange_booth],
+            ]],
+        )?;
+        msg!("Exchange Booth Account Created.");
+
+        let create_token_x_vault_account_ix = system_instruction::create_account(
+            admin.key,
+            &token_x_vault_key,
+            rent.minimum_balance(Mint::LEN),
+            Mint::LEN as u64,
+            system_token_program_account.key,
+        );
+
+        msg!("Creating Token X Vault...");
+        invoke_signed(
+            &create_token_x_vault_account_ix,
+            &[
+                system_program_account.clone(),
+                admin.clone(),
+                exchange_booth.clone(),
+            ],
+            &[&[
+                b"TokenXVault",
+                admin.key.as_ref(),
+                &fee_rate,
+                &[bump_seed_token_x_vault],
+            ]],
+        )?;
+
+        msg!("Initiating Token X Vault...");
+        let initiate_token_x_vault_account_ix = spl_token::instruction::initialize_account(
+            &system_token_program_account.key,
+            &token_x_vault_key,
+            &x_mint_account.key,
+            &exchange_booth_key,
+        )?;
+
+        invoke(
+            &initiate_token_x_vault_account_ix,
+            &[
+                system_token_program_account.clone(),
+                x_vault_account.clone(),
+                x_mint_account.clone(),
+                exchange_booth.clone(),
+            ],
+        )?;
+
+        let create_token_y_vault_account_ix = system_instruction::create_account(
+            admin.key,
+            &token_y_vault_key,
+            rent.minimum_balance(Mint::LEN),
+            Mint::LEN as u64,
+            system_token_program_account.key,
+        );
+        msg!("Creating Token Y Vault Account...");
+        invoke_signed(
+            &create_token_y_vault_account_ix,
+            &[
+                system_program_account.clone(),
+                admin.clone(),
+                exchange_booth.clone(),
+            ],
+            &[&[
+                b"TokenYVault",
+                admin.key.as_ref(),
+                &fee_rate,
+                &[bump_seed_token_y_vault],
+            ]],
+        )?;
+
+        msg!("Initiating Token Y Vault...");
+        let initiate_token_y_vault_account_ix = spl_token::instruction::initialize_account(
+            &system_token_program_account.key,
+            &token_y_vault_key,
+            &y_mint_account.key,
+            &exchange_booth_key,
+        )?;
+
+        invoke(
+            &initiate_token_y_vault_account_ix,
+            &[
+                system_token_program_account.clone(),
+                y_vault_account.clone(),
+                y_mint_account.clone(),
+                exchange_booth.clone(),
+
+            ],
+        )?;
+
+        msg!("Check Oracle...");
+        let _oracle_data = ExchangeBooth::try_from_slice(&oracle.data.borrow_mut())?;
+
+        let data_dst = &mut *exchange_booth.data.borrow_mut();
+
+        let data: Vec<u8> = admin.key.to_bytes().iter().copied()
+            .chain(oracle.key.to_bytes().iter().copied()) 
+            .chain(x_vault_account.key.to_bytes().iter().copied())   
+            .chain(y_vault_account.key.to_bytes().iter().copied())              
+            .chain(fee_rate.iter().copied())
+            .collect();
+
+        let data = ExchangeBooth::try_from_slice(&data)?;
+        data.serialize(data_dst)?;
+        msg!("Initialization Done");
+
         Ok(())
     }
 
@@ -101,7 +261,6 @@ impl Processor {
     ) -> ProgramResult {
         Ok(())
     }
-    
     fn process_exchange(
         _program_id: &Pubkey,
         accounts: &[AccountInfo],
