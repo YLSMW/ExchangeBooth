@@ -16,6 +16,9 @@ fn process_instruction(
         accounts.len(),
         instruction_data
     );
-    Processor::process(program_id, accounts, instruction_data);
-    Ok(()) // to be deleted when Processor::process is done
+    Processor::process_ix(program_id, accounts, instruction_data).map_err(|e| {
+        msg!("{}", e);
+        e.into()
+    })
+    
 }

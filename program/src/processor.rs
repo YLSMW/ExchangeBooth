@@ -1,7 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
@@ -11,25 +10,24 @@ use solana_program::{
     sysvar::rent::Rent,
 };
 use spl_token::{
-    instruction::{approve, burn, close_account, initialize_mint, mint_to, transfer},
+    instruction::{close_account, transfer},
     state::{Account,Mint},
 };
 
 use crate::{
     error::{
-        check_assert, declare_check_assert_macros, ExchangeBoothError, ExchangeBoothErrorCode,
+        check_assert, declare_check_assert_macros, ExchangeBoothErrorCode,
         ExchangeBoothResult, SourceFileId,
     },
     instruction::ExchangeBoothInstruction,
     state::ExchangeBooth,
-    utils::{check_token_account},
 };
 declare_check_assert_macros!(SourceFileId::Processor);
 
-pub struct Processor;
+pub struct Processor {}
 
 impl Processor {
-    pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
+    pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ExchangeBoothResult {
         let instruction = ExchangeBoothInstruction::try_from_slice(&data)
             .map_err(|_| ProgramError::InvalidInstructionData)?;
         match instruction {
@@ -59,8 +57,6 @@ impl Processor {
                 msg!("Instruction: Initialize ExchangeBooth");
                 Self::process_close_exchangebooth(program_id, accounts)
             }
-
-            _ => Ok(()),
         }
     }
     fn process_initialize_exchangebooth(
@@ -68,7 +64,7 @@ impl Processor {
         accounts: &[AccountInfo],
         // buffer_seed: u64,
         fee_rate: [u8; 2],
-    ) -> ProgramResult {
+    ) -> ExchangeBoothResult {
         let account_info_iter = &mut accounts.iter();
         let admin = next_account_info(account_info_iter)?;
         let x_vault_account = next_account_info(account_info_iter)?;
@@ -111,9 +107,9 @@ impl Processor {
             &exchange_booth_key,
         );
 
-        check_eq! (exchange_booth.key, &exchange_booth_key, ExchangeBoothErrorCode::PDAAccountDismatch);
-        check_eq! (x_vault_account.key, &token_x_vault_key, ExchangeBoothErrorCode::PDAAccountDismatch);
-        check_eq! (y_vault_account.key, &token_y_vault_key, ExchangeBoothErrorCode::PDAAccountDismatch);
+        check_eq! (exchange_booth.key, &exchange_booth_key, ExchangeBoothErrorCode::PDAAccountDismatch)?;
+        check_eq! (x_vault_account.key, &token_x_vault_key, ExchangeBoothErrorCode::PDAAccountDismatch)?;
+        check_eq! (y_vault_account.key, &token_y_vault_key, ExchangeBoothErrorCode::PDAAccountDismatch)?;
 
         let rent = Rent::default();
         let create_exchange_booth_account_ix = system_instruction::create_account(
@@ -248,7 +244,7 @@ impl Processor {
         _program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
-    ) -> ProgramResult {
+    ) -> ExchangeBoothResult {
         let account_info_iter = &mut accounts.iter();
         let admin = next_account_info(account_info_iter)?;
         let token_account = next_account_info(account_info_iter)?;       
@@ -259,11 +255,11 @@ impl Processor {
         let token_account_data = Account::unpack_from_slice(&token_account.data.borrow_mut())?;
         let token_vault_data = Account::unpack_from_slice(&token_vault.data.borrow_mut())?;
 
-        check_eq! (token_vault_data.is_initialized(), true, ExchangeBoothErrorCode::PDAAccountNotInitialized);
-        check_eq! (admin.is_signer, true, ExchangeBoothErrorCode::AuthorityCheckFailed);
-        check_eq! (token_vault_data.owner, *exchange_booth.key, ExchangeBoothErrorCode::TokenOwnerDismatch);
-        check_eq! (token_account_data.owner, *admin.key, ExchangeBoothErrorCode::TokenOwnerDismatch);
-        check_eq! (token_vault_data.mint, token_account_data.mint, ExchangeBoothErrorCode::TokenMintDismatch);
+        check_eq! (token_vault_data.is_initialized(), true, ExchangeBoothErrorCode::PDAAccountNotInitialized)?;
+        check_eq! (admin.is_signer, true, ExchangeBoothErrorCode::AuthorityCheckFailed)?;
+        check_eq! (token_vault_data.owner, *exchange_booth.key, ExchangeBoothErrorCode::TokenOwnerDismatch)?;
+        check_eq! (token_account_data.owner, *admin.key, ExchangeBoothErrorCode::TokenOwnerDismatch)?;
+        check_eq! (token_vault_data.mint, token_account_data.mint, ExchangeBoothErrorCode::TokenMintDismatch)?;
         let create_token_deposit_ix = transfer(
             system_token_program_account.key,
             token_account.key,
@@ -272,7 +268,7 @@ impl Processor {
             &[&admin.key],
             amount,
         )?;
-
+        // to debug: what if the amount is larger than token_account.amount
         msg!("Conduct Deposit...");
         invoke(
             &create_token_deposit_ix,
@@ -290,7 +286,7 @@ impl Processor {
         _program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
-    ) -> ProgramResult {
+    ) -> ExchangeBoothResult {
         let account_info_iter = &mut accounts.iter();
         let admin = next_account_info(account_info_iter)?;
         let token_account = next_account_info(account_info_iter)?;       
@@ -301,11 +297,11 @@ impl Processor {
         let token_account_data = Account::unpack_from_slice(&token_account.data.borrow_mut())?;
         let token_vault_data = Account::unpack_from_slice(&token_vault.data.borrow_mut())?;
 
-        check_eq! (token_vault_data.is_initialized(), true, ExchangeBoothErrorCode::PDAAccountNotInitialized);
-        check_eq! (admin.is_signer, true, ExchangeBoothErrorCode::AuthorityCheckFailed);
-        check_eq! (token_vault_data.owner, *exchange_booth.key, ExchangeBoothErrorCode::TokenOwnerDismatch);
-        check_eq! (token_account_data.owner, *admin.key, ExchangeBoothErrorCode::TokenOwnerDismatch);
-        check_eq! (token_vault_data.mint, token_account_data.mint, ExchangeBoothErrorCode::TokenMintDismatch);
+        check_eq! (token_vault_data.is_initialized(), true, ExchangeBoothErrorCode::PDAAccountNotInitialized)?;
+        check_eq! (admin.is_signer, true, ExchangeBoothErrorCode::AuthorityCheckFailed)?;
+        check_eq! (token_vault_data.owner, *exchange_booth.key, ExchangeBoothErrorCode::TokenOwnerDismatch)?;
+        check_eq! (token_account_data.owner, *admin.key, ExchangeBoothErrorCode::TokenOwnerDismatch)?;
+        check_eq! (token_vault_data.mint, token_account_data.mint, ExchangeBoothErrorCode::TokenMintDismatch)?;
         
         let create_token_deposit_ix = transfer(
             system_token_program_account.key,
@@ -334,14 +330,14 @@ impl Processor {
         accounts: &[AccountInfo],
         token_name_from: Vec<u8>,
         amount: u64,
-    ) -> ProgramResult {
+    ) -> ExchangeBoothResult {
         Ok(())
     }
 
     fn process_close_exchangebooth(
         _program_id: &Pubkey,
         accounts: &[AccountInfo],
-    ) -> ProgramResult {
+    ) -> ExchangeBoothResult {
         Ok(())
     }
 }

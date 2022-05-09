@@ -37,8 +37,7 @@ pub enum ExchangeBoothError {
 
 #[derive(Debug, Error, Clone, Copy, PartialEq, Eq, IntoPrimitive)]
 #[repr(u32)] // up to 2^32 error types
-pub enum ExchangeBoothErrorCode
-{
+pub enum ExchangeBoothErrorCode {
     #[error("Invalid Instruction")]
     InvalidInstruction,
 
@@ -73,7 +72,7 @@ pub enum ExchangeBoothErrorCode
     TokenOwnerDismatch,
 
     #[error("PDAAccount Not Initialized")]
-    PDAAccountNotInitialized
+    PDAAccountNotInitialized,
 }
 
 impl From<ExchangeBoothError> for ProgramError {
@@ -96,12 +95,18 @@ impl From<solana_program::pubkey::PubkeyError> for ExchangeBoothError {
     }
 }
 
+impl From<std::io::Error> for ExchangeBoothError {
+    fn from(de: std::io::Error) -> Self {
+        let pe: std::io::Error = de.into();
+        pe.into()
+    }
+}
+
 impl<T> DecodeError<T> for ExchangeBoothError {
     fn type_of() -> &'static str {
         "ExchangeBoothError"
     }
 }
-
 
 #[inline]
 pub fn check_assert(
@@ -151,4 +156,3 @@ macro_rules! declare_check_assert_macros {
     };
 }
 pub(crate) use declare_check_assert_macros;
-
