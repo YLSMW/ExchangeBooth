@@ -6,11 +6,9 @@ pub enum ExchangeBoothInstruction {
         fee_rate: [u8; 2]
     },
     Deposit {
-        token_name: Vec<u8>,
         amount: u64,
     },
     Withdraw {
-        token_name: Vec<u8>,
         amount: u64,
     },
     Exchange {

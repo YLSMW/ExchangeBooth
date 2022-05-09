@@ -70,9 +70,10 @@ pub enum ExchangeBoothErrorCode
     TokenMintDismatch,
 
     #[error("Token Owner Dismatch")]
-    TokenOwnerDismatch
+    TokenOwnerDismatch,
 
-
+    #[error("PDAAccount Not Initialized")]
+    PDAAccountNotInitialized
 }
 
 impl From<ExchangeBoothError> for ProgramError {

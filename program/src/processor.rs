@@ -5,7 +5,7 @@ use solana_program::{
     msg,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
-    program_pack::Pack,
+    program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
     system_instruction,
     sysvar::rent::Rent,
@@ -40,13 +40,13 @@ impl Processor {
                 msg!("Instruction: Initialize ExchangeBooth");
                 Self::process_initialize_exchangebooth(program_id, accounts, /* buffer_seed, */ fee_rate)
             }
-            ExchangeBoothInstruction::Deposit { token_name, amount } => {
+            ExchangeBoothInstruction::Deposit { amount } => {
                 msg!("Instruction: Initialize ExchangeBooth");
-                Self::process_deposit(program_id, accounts, token_name, amount)
+                Self::process_deposit(program_id, accounts, amount)
             }
-            ExchangeBoothInstruction::Withdraw { token_name, amount } => {
+            ExchangeBoothInstruction::Withdraw { amount } => {
                 msg!("Instruction: Initialize ExchangeBooth");
-                Self::process_withdraw(program_id, accounts, token_name, amount)
+                Self::process_withdraw(program_id, accounts, amount)
             }
             ExchangeBoothInstruction::Exchange {
                 token_name_from,
@@ -247,18 +247,86 @@ impl Processor {
     fn process_deposit(
         _program_id: &Pubkey,
         accounts: &[AccountInfo],
-        token_name: Vec<u8>,
         amount: u64,
     ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let admin = next_account_info(account_info_iter)?;
+        let token_account = next_account_info(account_info_iter)?;       
+        let exchange_booth = next_account_info(account_info_iter)?;
+        let token_vault = next_account_info(account_info_iter)?;
+        let system_token_program_account = next_account_info(account_info_iter)?;
+        
+        let token_account_data = Account::unpack_from_slice(&token_account.data.borrow_mut())?;
+        let token_vault_data = Account::unpack_from_slice(&token_vault.data.borrow_mut())?;
+
+        check_eq! (token_vault_data.is_initialized(), true, ExchangeBoothErrorCode::PDAAccountNotInitialized);
+        check_eq! (admin.is_signer, true, ExchangeBoothErrorCode::AuthorityCheckFailed);
+        check_eq! (token_vault_data.owner, *exchange_booth.key, ExchangeBoothErrorCode::TokenOwnerDismatch);
+        check_eq! (token_account_data.owner, *admin.key, ExchangeBoothErrorCode::TokenOwnerDismatch);
+        check_eq! (token_vault_data.mint, token_account_data.mint, ExchangeBoothErrorCode::TokenMintDismatch);
+        let create_token_deposit_ix = transfer(
+            system_token_program_account.key,
+            token_account.key,
+            token_vault.key,
+            admin.key,
+            &[&admin.key],
+            amount,
+        )?;
+
+        msg!("Conduct Deposit...");
+        invoke(
+            &create_token_deposit_ix,
+            &[
+                system_token_program_account.clone(),
+                token_account.clone(),
+                token_vault.clone(),
+                admin.clone(),
+            ],
+        )?; 
         Ok(())
     }
 
     fn process_withdraw(
         _program_id: &Pubkey,
         accounts: &[AccountInfo],
-        token_name: Vec<u8>,
         amount: u64,
     ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let admin = next_account_info(account_info_iter)?;
+        let token_account = next_account_info(account_info_iter)?;       
+        let exchange_booth = next_account_info(account_info_iter)?;
+        let token_vault = next_account_info(account_info_iter)?;
+        let system_token_program_account = next_account_info(account_info_iter)?;
+        
+        let token_account_data = Account::unpack_from_slice(&token_account.data.borrow_mut())?;
+        let token_vault_data = Account::unpack_from_slice(&token_vault.data.borrow_mut())?;
+
+        check_eq! (token_vault_data.is_initialized(), true, ExchangeBoothErrorCode::PDAAccountNotInitialized);
+        check_eq! (admin.is_signer, true, ExchangeBoothErrorCode::AuthorityCheckFailed);
+        check_eq! (token_vault_data.owner, *exchange_booth.key, ExchangeBoothErrorCode::TokenOwnerDismatch);
+        check_eq! (token_account_data.owner, *admin.key, ExchangeBoothErrorCode::TokenOwnerDismatch);
+        check_eq! (token_vault_data.mint, token_account_data.mint, ExchangeBoothErrorCode::TokenMintDismatch);
+        
+        let create_token_deposit_ix = transfer(
+            system_token_program_account.key,
+            token_vault.key,
+            token_account.key,
+            admin.key,
+            &[&admin.key],
+            amount,
+        )?;
+
+        msg!("Conduct Withdraw...");
+        invoke(
+            &create_token_deposit_ix,
+            &[
+                system_token_program_account.clone(),
+                token_vault.clone(),
+                token_account.clone(),
+                admin.clone(),
+            ],
+        )?; 
+        
         Ok(())
     }
     fn process_exchange(
