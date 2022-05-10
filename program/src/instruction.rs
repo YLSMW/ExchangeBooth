@@ -12,7 +12,6 @@ pub enum ExchangeBoothInstruction {
         amount: u64,
     },
     Exchange {
-        token_name_from: Vec<u8>,
         amount: u64,
     },
     CloseExchangeBooth {},

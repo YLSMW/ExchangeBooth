@@ -11,6 +11,8 @@ pub struct ExchangeBooth {
     // pub TokenYAmount: u64,
     pub FeeRate: [u8; 2], //rateNum + decimal For Example [1, 3] means 0.1%
 }
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct ExchangeBoothOracle {
     pub TokenXMInt: [u8; 32],
     pub TokenYMint: [u8; 32],

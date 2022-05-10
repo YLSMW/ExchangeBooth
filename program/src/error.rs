@@ -153,6 +153,17 @@ macro_rules! declare_check_assert_macros {
                 }
             };
         }
+
+        #[allow(unused_macros)]
+        macro_rules! throw_err {
+            ($err:expr) => {
+                ExchangeBoothError::ExchangeBoothErrorCode {
+                    exchange_booth_error_code: $err,
+                    line: line!(),
+                    source_file_id: $source_file_id,
+                }
+            };
+        }
     };
 }
 pub(crate) use declare_check_assert_macros;
