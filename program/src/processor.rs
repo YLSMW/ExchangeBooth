@@ -10,7 +10,7 @@ use solana_program::{
     sysvar::rent::Rent,
 };
 use spl_token::{
-    instruction::{close_account, transfer},
+    instruction::{transfer, close_account},
     state::{Account, Mint},
 };
 
@@ -458,6 +458,7 @@ impl Processor {
         if source_token_account_data.mint == *x_mint_account.key
             && dest_token_account_data.mint == *y_mint_account.key
         {
+            // calculate amount, note that mint decimal is handled in FE.
             let exchange_amount_y = (amount as u128)
                 .checked_mul(10u128.checked_pow(exchange_rate[1] as u32).unwrap())
                 .unwrap()
@@ -539,7 +540,7 @@ impl Processor {
                 return Err(throw_err!(ExchangeBoothErrorCode::InputAmountIllegal));
             }
             let exchange_amount_x = exchange_amount_x as u64;
-            
+
             let create_token_deposit_ix = transfer(
                 system_token_program_account.key,
                 source_token_account.key,

@@ -73,6 +73,9 @@ pub enum ExchangeBoothErrorCode {
 
     #[error("PDAAccount Not Initialized")]
     PDAAccountNotInitialized,
+
+    #[error("Oracle Dismatch")]
+    OracleDismatch,
 }
 
 impl From<ExchangeBoothError> for ProgramError {
