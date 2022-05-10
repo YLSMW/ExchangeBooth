@@ -472,7 +472,13 @@ impl Processor {
                 )
                 .unwrap()
                 .checked_div(10u128.checked_pow(fee_rate[1] as u32).unwrap())
-                .unwrap() as u64;
+                .unwrap();
+
+            if exchange_amount_y > u64::MAX as u128 {
+                return Err(throw_err!(ExchangeBoothErrorCode::InputAmountIllegal));
+            }
+            let exchange_amount_y = exchange_amount_y as u64;
+
             let create_token_deposit_ix = transfer(
                 system_token_program_account.key,
                 source_token_account.key,
@@ -527,8 +533,13 @@ impl Processor {
                 )
                 .unwrap()
                 .checked_div(10u128.checked_pow(fee_rate[1] as u32).unwrap())
-                .unwrap() as u64;
+                .unwrap();
 
+            if exchange_amount_x > u64::MAX as u128 {
+                return Err(throw_err!(ExchangeBoothErrorCode::InputAmountIllegal));
+            }
+            let exchange_amount_x = exchange_amount_x as u64;
+            
             let create_token_deposit_ix = transfer(
                 system_token_program_account.key,
                 source_token_account.key,
