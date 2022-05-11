@@ -1,34 +1,30 @@
 {
-    "name": "exchangebooth",
+    "name": "frontend",
     "version": "1.0.0",
     "description": "",
-    "main": "index.ts",
-    "type": "module",
-    "scripts": {
-        "start": "ts-node-dev --respawn --transpileOnly src/index.ts",
-        "tx_echo_0": "node tx_echo.js 0 6pfP7NrNmS72i68nf96fsmGRtskQVjGqxAyoqwHQu59R 50,40,20,30,10,0"
-    },
-    "author": "",
+    "main": "index.js",
+    "keywords": [],
+    "author": "Husky",
     "license": "ISC",
+    "scripts": {
+        "dev:comment": "启动开发环境",
+        "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+        "eslint:comment": "使用 ESLint 检查并自动修复 src 目录下所有扩展名为 .ts 的文件",
+        "eslint": "eslint --fix src --ext .ts --max-warnings=0",
+        "prettier:comment": "自动格式化 src 目录下的所有 .ts 文件",
+        "prettier": "prettier --write \"src/**/*.ts\""
+    },
+    "bin": {
+        "ts-cli": "./bin/ts-cli.js"
+    },
     "devDependencies": {
-        "@types/bn.js": "^5.1.0",
-        "@types/bs58": "^4.0.1",
-        "@types/node": "^17.0.31",
-        "@typescript-eslint/eslint-plugin": "^4.31.2",
-        "@typescript-eslint/parser": "^4.31.2",
-        "eslint": "^7.32.0",
-        "eslint-config-prettier": "^8.3.0",
-        "eslint-plugin-prettier": "^4.0.0",
-        "eslint-plugin-unused-imports": "^1.1.5",
-        "prettier": "^2.4.1",
+        "@types/node": "^17.0.32",
+        "@typescript-eslint/eslint-plugin": "^5.23.0",
+        "@typescript-eslint/parser": "^5.23.0",
+        "eslint": "^8.15.0",
+        "eslint-config-prettier": "^8.5.0",
+        "prettier": "^2.6.2",
         "ts-node-dev": "^1.1.8",
         "typescript": "^4.6.4"
-    },
-    "dependencies": {
-        "@solana/spl-token": "^0.1.8",
-        "@solana/web3.js": "^1.29.1",
-        "babel-core": "^6.26.3",
-        "babel-preset-env": "^1.7.0",
-        "bn.js": "^5.2.0"
     }
 }
